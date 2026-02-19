@@ -1,0 +1,132 @@
+import React, { createContext, useContext, forwardRef, useId } from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { Controller, FormProvider, useFormContext } from "react-hook-form";
+import { cn } from "../../lib/utils";
+import { Label } from "./label";
+
+/* Provider */
+const Form = FormProvider;
+
+/* ---------- Field Context ---------- */
+const FormFieldContext = createContext({});
+const FormItemContext = createContext({});
+
+/* FormField */
+function FormField(props) {
+  return (
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
+  );
+}
+
+/* Hook */
+function useFormField() {
+  const fieldContext = useContext(FormFieldContext);
+  const itemContext = useContext(FormItemContext);
+  const { getFieldState, formState } = useFormContext();
+
+  const fieldState = getFieldState(fieldContext.name, formState);
+  const id = itemContext.id;
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-description`,
+    formMessageId: `${id}-form-message`,
+    ...fieldState,
+  };
+}
+
+/* FormItem */
+const FormItem = forwardRef(function FormItem({ className, ...props }, ref) {
+  const id = useId();
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  );
+});
+
+/* Label */
+const FormLabel = forwardRef(function FormLabel({ className, ...props }, ref) {
+  const { error, formItemId } = useFormField();
+
+  return (
+    <Label
+      ref={ref}
+      htmlFor={formItemId}
+      className={cn(error && "text-red-500", className)}
+      {...props}
+    />
+  );
+});
+
+/* Control */
+const FormControl = forwardRef(function FormControl(props, ref) {
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error ? formDescriptionId : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  );
+});
+
+/* Description */
+const FormDescription = forwardRef(function FormDescription(
+  { className, ...props },
+  ref
+) {
+  const { formDescriptionId } = useFormField();
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-gray-500", className)}
+      {...props}
+    />
+  );
+});
+
+/* Error Message */
+const FormMessage = forwardRef(function FormMessage(
+  { className, children, ...props },
+  ref
+) {
+  const { error, formMessageId } = useFormField();
+  const body = error ? String(error?.message) : children;
+
+  if (!body) return null;
+
+  return (
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-red-500", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  );
+});
+
+export {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  useFormField,
+};
